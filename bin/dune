@@ -1,0 +1,4 @@
+(executable
+ (public_name mini-liquid)
+ (name main)
+ (libraries mini_liquid))

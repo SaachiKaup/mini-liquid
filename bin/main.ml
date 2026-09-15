@@ -1,5 +1,6 @@
 open Mini_liquid.Syntax
 open Mini_liquid.Constraints
+open Mini_liquid.Rule_engine
 
 let max_program =
   Function (
@@ -81,6 +82,9 @@ let false_branch_obligation = {
   expected_type = max_result_type;
 }
 
+let inferred_x_type, obligations = 
+    infer_variable true_context "x"
+
 let () =
   print_endline (string_of_expr max_program);
   print_endline "True branch:";
@@ -94,3 +98,6 @@ let () =
   print_endline ("Whole-if result refinement: " ^ string_of_refinement_template max_result_refinement);
   print_endline ("True-branch obligation: \n " ^ string_of_subtyping_obligation true_branch_obligation);
   print_endline ("False-branch obligation: \n " ^ string_of_subtyping_obligation false_branch_obligation);
+  print_endline
+    ("LT-VAR inferred for x: "
+     ^ string_of_liquid_type_template inferred_x_type);

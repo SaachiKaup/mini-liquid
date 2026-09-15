@@ -45,15 +45,39 @@ let true_context = {
     ]
 }
 
+let false_context = {
+  variables =
+    [
+      ("x", unrestricted_int);
+      ("y", unrestricted_int);
+    ];
+  guards =
+    [
+      Not (FactGreaterThan (Name "x", Name "y"));
+    ];
+}
+
 let x_result_type = 
   BaseLiquidType (
     IntType,
     KnownFacts [Equal (Name "result", Name "x")]
   )
 
+let y_result_type =
+  BaseLiquidType (
+    IntType,
+    KnownFacts [Equal (Name "result", Name "y")]
+  )
+
 let true_branch_obligation = {
   context = true_context;
   actual_type = x_result_type;
+  expected_type = max_result_type;
+}
+
+let false_branch_obligation = {
+  context = false_context;
+  actual_type = y_result_type;
   expected_type = max_result_type;
 }
 
@@ -69,3 +93,4 @@ let () =
     false_branch_facts;
   print_endline ("Whole-if result refinement: " ^ string_of_refinement_template max_result_refinement);
   print_endline ("True-branch obligation: \n " ^ string_of_subtyping_obligation true_branch_obligation);
+  print_endline ("False-branch obligation: \n " ^ string_of_subtyping_obligation false_branch_obligation);

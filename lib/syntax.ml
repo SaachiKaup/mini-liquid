@@ -23,6 +23,30 @@ type fact =
   | GreaterOrEqual of term * term
   | Not of fact
 
+type kappa =
+  | Kappa of string
+
+type refinement_template =
+  | KnownFacts of fact list
+  | UnknownRefinement of kappa
+
+
+(*
+    Paper notation: {ν : B | κ}
+    First line is for plain variables
+    So the first line matches this - { result : int | κ0 }
+    The second line is a translation of the LT-FUN rule
+      (Γ; x : Tx ⊢ Q e : T) AND (Γ ⊢ x : Tx -> T)
+      ─────────────────────────────────────────  [LT-FUN]
+      Γ ⊢ Q λx.e : (x : Tx → T)
+     > If, after assuming that x has type Tx, the function body e has type T, then the function fun x -> e has type “takes an x of type Tx and returns a T.”
+
+*)
+type liquid_type_template =
+    | BaseLiquidType of base_type * refinement_template
+    | FunctionLiquidType of string * liquid_type_template * liquid_type_template
+
+
 let string_of_base_type = function
   | IntType -> "int"
   | BoolType -> "bool"
@@ -67,4 +91,13 @@ let rec string_of_expr = function
         (string_of_base_type parameter_type)
         (string_of_expr body)
 
+let string_of_kappa = function
+  | Kappa name -> name
+
+let string_of_refinement_template = function
+  | KnownFacts [] -> "true"
+  | KnownFacts facts ->
+      String.concat " AND " (List.map string_of_fact facts)
+  | UnknownRefinement kappa ->
+      string_of_kappa kappa
 

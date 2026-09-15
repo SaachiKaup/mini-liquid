@@ -27,6 +27,8 @@ let false_branch_facts =
     Equal (Name "result", Name "y");
   ]
 
+let max_result_refinement = UnknownRefinement (Kappa "kappa0")
+
 let () =
   print_endline (string_of_expr max_program);
   print_endline "True branch:";
@@ -36,5 +38,5 @@ let () =
   print_endline "False branch:";
   List.iter
     (fun fact -> print_endline ("  " ^ string_of_fact fact))
-    false_branch_facts
-
+    false_branch_facts;
+  print_endline ("Whole-if result refinement: " ^ string_of_refinement_template max_result_refinement)

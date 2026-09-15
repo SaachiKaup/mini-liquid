@@ -101,3 +101,13 @@ let string_of_refinement_template = function
   | UnknownRefinement kappa ->
       string_of_kappa kappa
 
+let rec string_of_liquid_type_template = function
+  | BaseLiquidType (base_type, refinement) ->
+      Printf.sprintf "{result : %s | %s}"
+        (string_of_base_type base_type)
+        (string_of_refinement_template refinement)
+  | FunctionLiquidType (name, input_type, output_type) ->
+      Printf.sprintf "%s : %s -> %s"
+        name
+        (string_of_liquid_type_template input_type)
+        (string_of_liquid_type_template output_type)

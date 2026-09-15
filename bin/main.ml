@@ -1,4 +1,5 @@
 open Mini_liquid.Syntax
+open Mini_liquid.Constraints
 
 let max_program =
   Function (
@@ -28,6 +29,33 @@ let false_branch_facts =
   ]
 
 let max_result_refinement = UnknownRefinement (Kappa "kappa0")
+let max_result_type = BaseLiquidType (IntType, max_result_refinement)
+
+let unrestricted_int = BaseLiquidType (IntType, KnownFacts [])
+
+let true_context = {
+  variables = 
+    [
+      ("x", unrestricted_int);
+      ("y", unrestricted_int);
+    ];
+  guards = 
+    [
+      FactGreaterThan (Name "x", Name "y");
+    ]
+}
+
+let x_result_type = 
+  BaseLiquidType (
+    IntType,
+    KnownFacts [Equal (Name "result", Name "x")]
+  )
+
+let true_branch_obligation = {
+  context = true_context;
+  actual_type = x_result_type;
+  expected_type = max_result_type;
+}
 
 let () =
   print_endline (string_of_expr max_program);
@@ -39,4 +67,5 @@ let () =
   List.iter
     (fun fact -> print_endline ("  " ^ string_of_fact fact))
     false_branch_facts;
-  print_endline ("Whole-if result refinement: " ^ string_of_refinement_template max_result_refinement)
+  print_endline ("Whole-if result refinement: " ^ string_of_refinement_template max_result_refinement);
+  print_endline ("True-branch obligation: \n " ^ string_of_subtyping_obligation true_branch_obligation);

@@ -100,6 +100,9 @@ let empty_context = {
 let identity_type, identity_obligations =
   infer_expression empty_context identity_program
 
+let inferred_max_type, inferred_max_obligations =
+  infer_expression empty_context max_program
+
 let () =
   print_endline (string_of_expr max_program);
   print_endline "True branch:";
@@ -119,3 +122,12 @@ let () =
   print_endline
     ("LT-FUN inferred for identity: "
      ^ string_of_liquid_type_template identity_type);
+  print_endline
+      ("LT-IF inferred for max: "
+       ^ string_of_liquid_type_template inferred_max_type);
+  print_endline "LT-IF generated obligations:";
+  List.iter
+    (fun obligation ->
+      print_endline
+        ("  " ^ string_of_subtyping_obligation obligation))
+    inferred_max_obligations;

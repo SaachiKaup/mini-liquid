@@ -85,6 +85,21 @@ let false_branch_obligation = {
 let inferred_x_type, obligations = 
     infer_variable true_context "x"
 
+let identity_program =
+  Function (
+    "x",
+    IntType,
+    Variable "x"
+  )
+
+let empty_context = {
+  variables = [];
+  guards = [];
+}
+
+let identity_type, identity_obligations =
+  infer_expression empty_context identity_program
+
 let () =
   print_endline (string_of_expr max_program);
   print_endline "True branch:";
@@ -101,3 +116,6 @@ let () =
   print_endline
     ("LT-VAR inferred for x: "
      ^ string_of_liquid_type_template inferred_x_type);
+  print_endline
+    ("LT-FUN inferred for identity: "
+     ^ string_of_liquid_type_template identity_type);

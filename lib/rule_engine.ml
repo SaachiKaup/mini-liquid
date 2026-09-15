@@ -25,3 +25,23 @@ let infer_variable context name =
   | None ->
       failwith ("Unknown variable: " ^ name)
 
+(* dispatcher which goes through program and picks which rule to apply *)
+let rec infer_expression context expression =
+  match expression with
+  | Variable name ->
+      infer_variable context name
+  | Function (name, base_type, body) ->
+      let input_param_type = 
+        BaseLiquidType (base_type, KnownFacts [])
+      in
+      let body_type, obligations =
+        infer_expression 
+          {
+            context with
+            variables = (name, input_param_type) :: context.variables;
+          }
+          body
+      in
+      (FunctionLiquidType (name, input_param_type, body_type), obligations)
+  | _ ->
+      failwith ("Unknown act")

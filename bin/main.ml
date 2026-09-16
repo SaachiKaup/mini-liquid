@@ -1,9 +1,8 @@
 open Mini_liquid.Syntax
 open Mini_liquid.Constraints
 open Mini_liquid.Qualifiers
-open Mini_liquid.Solver
 open Mini_liquid.Rule_engine
-open Mini_liquid.Smtlib
+open Mini_liquid.Solver
 
 let max_program =
   Function (
@@ -20,152 +19,66 @@ let max_program =
     )
   )
 
-let true_branch_facts =
-  [
-    FactGreaterThan (Name "x", Name "y");
-    Equal (Name "result", Name "x");
-  ]
-
-let false_branch_facts =
-  [
-    Not (FactGreaterThan (Name "x", Name "y"));
-    Equal (Name "result", Name "y");
-  ]
-
-let max_result_refinement = UnknownRefinement (Kappa "kappa0")
-let max_result_type = BaseLiquidType (IntType, max_result_refinement)
-
-let unrestricted_int = BaseLiquidType (IntType, KnownFacts [])
-
-let true_context = {
-  variables = 
-    [
-      ("x", unrestricted_int);
-      ("y", unrestricted_int);
-    ];
-  guards = 
-    [
-      FactGreaterThan (Name "x", Name "y");
-    ]
-}
-
-let false_context = {
-  variables =
-    [
-      ("x", unrestricted_int);
-      ("y", unrestricted_int);
-    ];
-  guards =
-    [
-      Not (FactGreaterThan (Name "x", Name "y"));
-    ];
-}
-
-let x_result_type = 
-  BaseLiquidType (
-    IntType,
-    KnownFacts [Equal (Name "result", Name "x")]
-  )
-
-let y_result_type =
-  BaseLiquidType (
-    IntType,
-    KnownFacts [Equal (Name "result", Name "y")]
-  )
-
-let true_branch_obligation = {
-  context = true_context;
-  actual_type = x_result_type;
-  expected_type = max_result_type;
-}
-
-let false_branch_obligation = {
-  context = false_context;
-  actual_type = y_result_type;
-  expected_type = max_result_type;
-}
-
-let inferred_x_type, obligations = 
-    infer_variable true_context "x"
-
-let identity_program =
-  Function (
-    "x",
-    IntType,
-    Variable "x"
-  )
-
 let empty_context = {
   variables = [];
   guards = [];
 }
 
-let identity_type, identity_obligations =
-  infer_expression empty_context identity_program
+let print_obligation obligation =
+  print_endline
+    ("  " ^ string_of_subtyping_obligation obligation)
 
-let inferred_max_type, inferred_max_obligations =
-  infer_expression empty_context max_program
-  
 let () =
-  print_endline (string_of_expr max_program);
-  print_endline "True branch:";
-  List.iter
-    (fun fact -> print_endline ("  " ^ string_of_fact fact))
-    true_branch_facts;
-  print_endline "False branch:";
-  List.iter
-    (fun fact -> print_endline ("  " ^ string_of_fact fact))
-    false_branch_facts;
-  print_endline ("Whole-if result refinement: " ^ string_of_refinement_template max_result_refinement);
-  print_endline ("True-branch obligation: \n " ^ string_of_subtyping_obligation true_branch_obligation);
-  print_endline ("False-branch obligation: \n " ^ string_of_subtyping_obligation false_branch_obligation);
-  print_endline
-    ("LT-VAR inferred for x: "
-     ^ string_of_liquid_type_template inferred_x_type);
-  print_endline
-    ("LT-FUN inferred for identity: "
-     ^ string_of_liquid_type_template identity_type);
-  print_endline
-      ("LT-IF inferred for max: "
-       ^ string_of_liquid_type_template inferred_max_type);
-  print_endline "LT-IF generated obligations:";
-  List.iter
-    (fun obligation ->
-      print_endline
-        ("  " ^ string_of_subtyping_obligation obligation))
-    inferred_max_obligations;
+  let template_type, obligations =
+    infer_expression empty_context max_program
+  in
 
-  print_endline "Facts collected from generated obligations:";
-  List.iter
-    (fun obligation ->
-      List.iter
-        (fun fact -> print_endline ("  " ^ string_of_fact fact))
-        (facts_of_obligation obligation))
-    inferred_max_obligations;
+  print_endline "Program:";
+  print_endline ("  " ^ string_of_expr max_program);
 
-  print_endline "Candidate qualifiers for kappa0:";
+  print_endline "\nLT-IF generated obligations:";
+  List.iter print_obligation obligations;
 
+  print_endline "\nCandidate qualifiers Q:";
   List.iter
-    (fun qualifier ->
-      print_endline ("  " ^ string_of_fact qualifier))
+    (fun candidate ->
+      print_endline ("  " ^ string_of_fact candidate))
     max_qualifiers;
 
-  print_endline "Checking result >= y against both obligations:";
+  print_endline "\nZ3 checks:";
+  let candidate_results =
+    List.map
+      (fun candidate ->
+        (candidate, counterexample_for_candidate obligations candidate))
+      max_qualifiers
+  in
+  List.iter
+    (fun (candidate, result) ->
+      match result with
+      | None ->
+          print_endline ("  keep: " ^ string_of_fact candidate)
+      | Some model ->
+          print_endline ("  remove: " ^ string_of_fact candidate);
+          print_endline ("    counterexample:\n" ^ model))
+    candidate_results;
 
-  match inferred_max_obligations with
-    | first_obligation :: _ ->
-        let candidate =
-          GreaterOrEqual (Name "result", Integer 0)
-        in
-        (
-          match counterexample_for_obligation first_obligation candidate with
-          | None ->
-              print_endline "No counterexample found"
+  let surviving_qualifiers =
+    List.filter_map
+      (fun (candidate, result) ->
+        match result with
+        | None -> Some candidate
+        | Some _ -> None)
+      candidate_results
+  in
+  let final_type =
+    fill_kappa "kappa0" surviving_qualifiers template_type
+  in
 
-          | Some model ->
-              print_endline "Counterexample for result >= 0:";
-              print_endline model
-        )
+  print_endline "\nFinal meaning of kappa0:";
+  print_endline
+    ("  "
+     ^ string_of_refinement_template
+         (KnownFacts surviving_qualifiers));
 
-    | [] ->
-        failwith "Expected max to generate obligations"
+  print_endline "\nFinal inferred type for max:";
+  print_endline ("  " ^ string_of_liquid_type_template final_type)

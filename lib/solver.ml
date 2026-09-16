@@ -35,3 +35,29 @@ let counterexample_for_obligation obligation candidate =
 
   | answer ->
       failwith ("Unexpected Z3 answer: " ^ answer)
+
+let counterexample_for_candidate obligations candidate =
+  let rec search = function
+    | [] ->
+        None
+    | obligation :: remaining ->
+        (
+          match counterexample_for_obligation obligation candidate with
+          | Some model -> Some model
+          | None -> search remaining
+        )
+  in
+  search obligations
+
+let rec fill_kappa kappa_name facts = function
+  | BaseLiquidType (base_type, UnknownRefinement (Kappa name))
+    when name = kappa_name ->
+      BaseLiquidType (base_type, KnownFacts facts)
+  | BaseLiquidType _ as liquid_type ->
+      liquid_type
+  | FunctionLiquidType (name, input_type, output_type) ->
+      FunctionLiquidType (
+        name,
+        fill_kappa kappa_name facts input_type,
+        fill_kappa kappa_name facts output_type
+      )

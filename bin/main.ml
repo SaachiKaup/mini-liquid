@@ -49,7 +49,7 @@ let () =
   let candidate_results =
     List.map
       (fun candidate ->
-        (candidate, counterexample_for_candidate obligations candidate))
+        (candidate, counterexample_in_any_branch obligations candidate))
       max_qualifiers
   in
   List.iter

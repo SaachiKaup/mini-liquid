@@ -45,3 +45,5 @@ let max_query known_facts candidate =
       ]
     )
 
+let max_query_with_model known_facts candidate =
+  max_query known_facts candidate ^ "\n(get-model)"

@@ -152,18 +152,20 @@ let () =
 
   print_endline "Checking result >= y against both obligations:";
 
-  print_endline "Solving kappa0:";
+  match inferred_max_obligations with
+    | first_obligation :: _ ->
+        let candidate =
+          GreaterOrEqual (Name "result", Integer 0)
+        in
+        (
+          match counterexample_for_obligation first_obligation candidate with
+          | None ->
+              print_endline "No counterexample found"
 
-  List.iter
-    (fun candidate ->
-      let outcome =
-        if candidate_holds_for_all inferred_max_obligations candidate
-        then "keep"
-        else "remove"
-      in
-      print_endline
-        ("  "
-         ^ string_of_fact candidate
-         ^ ": "
-         ^ outcome))
-    max_qualifiers
+          | Some model ->
+              print_endline "Counterexample for result >= 0:";
+              print_endline model
+        )
+
+    | [] ->
+        failwith "Expected max to generate obligations"

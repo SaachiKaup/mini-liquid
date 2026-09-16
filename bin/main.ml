@@ -1,6 +1,7 @@
 open Mini_liquid.Syntax
 open Mini_liquid.Constraints
 open Mini_liquid.Qualifiers
+open Mini_liquid.Solver
 open Mini_liquid.Rule_engine
 open Mini_liquid.Smtlib
 
@@ -151,21 +152,18 @@ let () =
 
   print_endline "Checking result >= y against both obligations:";
 
-  let candidate =
-    GreaterOrEqual (Name "result", Name "y")
-  in
+  print_endline "Solving kappa0:";
+
   List.iter
-    (fun obligation ->
-      let known_facts = facts_of_obligation obligation in
-      let query = max_query known_facts candidate in
-
-      List.iter
-        (fun fact ->
-          print_endline ("  known: " ^ string_of_fact fact))
-        known_facts;
-
+    (fun candidate ->
+      let outcome =
+        if candidate_holds_for_all inferred_max_obligations candidate
+        then "keep"
+        else "remove"
+      in
       print_endline
-        ("  Z3 says: "
-         ^ Mini_liquid.Z3_runner.run query))
-    inferred_max_obligations
-
+        ("  "
+         ^ string_of_fact candidate
+         ^ ": "
+         ^ outcome))
+    max_qualifiers

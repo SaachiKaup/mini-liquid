@@ -21,6 +21,12 @@ type subtyping_obligation = {
   expected_type : liquid_type_template;
 }
 
+let facts_of_obligation obligation =
+  match obligation.actual_type with
+  | BaseLiquidType (_, KnownFacts actual_facts) ->
+      obligation.context.guards @ actual_facts
+  | _ ->
+      failwith "Expected a base type with known facts"
 
 let string_of_binding (name, type_template) =
   Printf.sprintf "%s : %s"

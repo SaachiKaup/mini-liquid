@@ -131,3 +131,12 @@ let () =
       print_endline
         ("  " ^ string_of_subtyping_obligation obligation))
     inferred_max_obligations;
+
+  print_endline "Facts collected from generated obligations:";
+  List.iter
+    (fun obligation ->
+      List.iter
+        (fun fact -> print_endline ("  " ^ string_of_fact fact))
+        (facts_of_obligation obligation))
+    inferred_max_obligations;
+

@@ -1,6 +1,8 @@
 open Mini_liquid.Syntax
 open Mini_liquid.Constraints
+open Mini_liquid.Qualifiers
 open Mini_liquid.Rule_engine
+open Mini_liquid.Smtlib
 
 let max_program =
   Function (
@@ -102,7 +104,7 @@ let identity_type, identity_obligations =
 
 let inferred_max_type, inferred_max_obligations =
   infer_expression empty_context max_program
-
+  
 let () =
   print_endline (string_of_expr max_program);
   print_endline "True branch:";
@@ -139,4 +141,31 @@ let () =
         (fun fact -> print_endline ("  " ^ string_of_fact fact))
         (facts_of_obligation obligation))
     inferred_max_obligations;
+
+  print_endline "Candidate qualifiers for kappa0:";
+
+  List.iter
+    (fun qualifier ->
+      print_endline ("  " ^ string_of_fact qualifier))
+    max_qualifiers;
+
+  print_endline "Checking result >= y against both obligations:";
+
+  let candidate =
+    GreaterOrEqual (Name "result", Name "y")
+  in
+  List.iter
+    (fun obligation ->
+      let known_facts = facts_of_obligation obligation in
+      let query = max_query known_facts candidate in
+
+      List.iter
+        (fun fact ->
+          print_endline ("  known: " ^ string_of_fact fact))
+        known_facts;
+
+      print_endline
+        ("  Z3 says: "
+         ^ Mini_liquid.Z3_runner.run query))
+    inferred_max_obligations
 

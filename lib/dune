@@ -1,2 +1,4 @@
 (library
- (name mini_liquid))
+ (name mini_liquid)
+ (libraries unix))
+

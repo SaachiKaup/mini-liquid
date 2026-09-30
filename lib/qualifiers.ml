@@ -96,6 +96,24 @@ let fill_qualifier
   | LessThanEqualTo -> GreaterOrEqual (right, left)
   | LessThan -> FactGreaterThan (right, left)
 
+(* Instantiate every supplied qualifier using the visible integer variables. *)
+let generated_qualifiers (env : environment) : fact list =
+  let variables = integer_variables env in
+  let add_if_new facts assignment qualifier =
+    let fact = fill_qualifier assignment qualifier in
+    if List.mem fact facts then facts else fact :: facts
+  in
+  List.fold_right
+    (fun qualifier facts ->
+      let names = placeholder_names qualifier in
+      let assignments = placeholder_assignments names variables in
+      List.fold_right
+        (fun assignment facts -> add_if_new facts assignment qualifier)
+        assignments
+        facts)
+    qualifiers
+    []
+
 (*
 let string_of_qualifier q =
     Printf.sprintf "%s %s %s"

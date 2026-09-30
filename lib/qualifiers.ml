@@ -79,6 +79,23 @@ let placeholder_assignments
     placeholders
     [ [] ]
 
+(* Fill one qualifier with one placeholder assignment and translate it to the
+   concrete fact representation used by the solver. *)
+let fill_qualifier
+    (assignment : (string * string) list)
+    (q : qualifier) : fact =
+  let concrete_term = function
+    | Result -> Name "result"
+    | PlaceholderVar name ->
+        Name (List.assoc name assignment)
+    | Constant number -> Integer number
+  in
+  let left = concrete_term q.left_term in
+  let right = concrete_term q.right_term in
+  match q.relationship with
+  | LessThanEqualTo -> GreaterOrEqual (right, left)
+  | LessThan -> FactGreaterThan (right, left)
+
 (*
 let string_of_qualifier q =
     Printf.sprintf "%s %s %s"

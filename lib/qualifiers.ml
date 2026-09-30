@@ -1,9 +1,22 @@
 open Syntax
 
-type qualifier_term = {
-    result: Name,
-    placeholder: Name, 
-    constant: Integer
+type qualifier_term  = 
+    | Result
+    | Var of string 
+    | Constant of int
+
+
+(*
+We only need <= and <
+*)
+type qualifier_comparison =
+    | LessThanEqualTo
+    | LessThan
+
+type qualifier = {
+    left_term: qualifier_term,
+    relationship: qualifier_comparison,
+    right_term: qualifier_term
 }
 
 (* Set Q, we are manually providing, this is not derived, it is in the paper as something provided in the beginnning *)

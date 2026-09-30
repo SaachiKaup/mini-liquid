@@ -1,6 +1,7 @@
 open Mini_liquid.Syntax
 open Mini_liquid.Constraints
 open Mini_liquid.Qualifiers
+open Mini_liquid.Env_qualifiers
 open Mini_liquid.Rule_engine
 open Mini_liquid.Solver
 
@@ -32,6 +33,9 @@ let () =
   let template_type, obligations =
     infer_expression empty_context max_program
   in
+  let candidate_qualifiers =
+    generated_for_obligations obligations
+  in
 
   print_endline "Program:";
   print_endline ("  " ^ string_of_expr max_program);
@@ -43,14 +47,14 @@ let () =
   List.iter
     (fun candidate ->
       print_endline ("  " ^ string_of_fact candidate))
-    max_qualifiers;
+    candidate_qualifiers;
 
   print_endline "\nZ3 checks:";
   let candidate_results =
     List.map
       (fun candidate ->
         (candidate, counterexample_in_any_branch obligations candidate))
-      max_qualifiers
+      candidate_qualifiers
   in
   List.iter
     (fun (candidate, result) ->

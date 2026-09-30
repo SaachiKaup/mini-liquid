@@ -1,8 +1,0 @@
-(executable
- (public_name mini-liquid)
- (name main)
- (libraries mini_liquid))
-
-(executable
- (name cmt_check)
- (libraries mini_liquid))

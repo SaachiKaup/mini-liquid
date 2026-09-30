@@ -1,4 +1,5 @@
 open Syntax
+open Constraints
 
 type qualifier_term  = 
     | Result
@@ -39,4 +40,8 @@ let qualifiers =
     }
   ]
 
-
+(*
+let string_of_qualifier q =
+    Printf.sprintf "%s %s %s"
+      q.left_term q.relationship q.right_term
+*)

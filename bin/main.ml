@@ -5,20 +5,13 @@ open Mini_liquid.Env_qualifiers
 open Mini_liquid.Rule_engine
 open Mini_liquid.Solver
 
+let source_path = "lib/programs/max_program.ml"
+
 let max_program =
-  Function (
-    "x",
-    IntType,
-    Function (
-      "y",
-      IntType,
-      If (
-        GreaterThan (Variable "x", Variable "y"),
-        Variable "x",
-        Variable "y"
-      )
-    )
-  )
+  let typed_source =
+    Mini_liquid.Cmt_frontend.compile_and_read source_path
+  in
+  Mini_liquid.Typedtree_adapter.max_expression typed_source.structure
 
 let empty_context = {
   variables = [];

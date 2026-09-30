@@ -1,5 +1,6 @@
 open Syntax
 open Constraints
+open Constraints
 
 type qualifier_term  = 
     | Result
@@ -39,6 +40,17 @@ let qualifiers =
       right_term = Result;
     }
   ]
+
+(* The first resolution step: keep only names whose binding has base type int.
+   Placeholder filling happens in a later function. *)
+let integer_variables (env : environment) : string list =
+  List.fold_right
+    (fun (name, liquid_type) names ->
+      match liquid_type with
+      | BaseLiquidType (IntType, _) -> name :: names
+      | _ -> names)
+    env
+    []
 
 (*
 let string_of_qualifier q =

@@ -52,6 +52,33 @@ let integer_variables (env : environment) : string list =
     env
     []
 
+(* Return each placeholder label used by one qualifier, once and in source
+   order. *)
+let placeholder_names (q : qualifier) : string list =
+  List.fold_right
+    (fun term names ->
+      match term with
+      | PlaceholderVar name when not (List.mem name names) -> name :: names
+      | _ -> names)
+    [ q.left_term; q.right_term ]
+    []
+
+(* Produce every assignment of eligible variable names to placeholder labels. *)
+let placeholder_assignments
+    (placeholders : string list)
+    (variables : string list) : (string * string) list list =
+  List.fold_right
+    (fun placeholder assignments ->
+      List.concat
+        (List.map
+           (fun variable ->
+             List.map
+               (fun assignment -> (placeholder, variable) :: assignment)
+               assignments)
+           variables))
+    placeholders
+    [ [] ]
+
 (*
 let string_of_qualifier q =
     Printf.sprintf "%s %s %s"

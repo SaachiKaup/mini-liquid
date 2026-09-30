@@ -1,4 +1,3 @@
 (library
  (name mini_liquid)
- (libraries unix))
-
+ (libraries unix compiler-libs.common))

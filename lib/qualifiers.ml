@@ -2,7 +2,7 @@ open Syntax
 
 type qualifier_term  = 
     | Result
-    | Var of string 
+    | PlaceholderVar of string 
     | Constant of int
 
 
@@ -14,19 +14,29 @@ type qualifier_comparison =
     | LessThan
 
 type qualifier = {
-    left_term: qualifier_term,
-    relationship: qualifier_comparison,
+    left_term: qualifier_term;
+    relationship: qualifier_comparison;
     right_term: qualifier_term
 }
 
-(* Set Q, we are manually providing, this is not derived, it is in the paper as something provided in the beginnning *)
-let max_qualifiers = 
+(* including all qualifiers *)
+let qualifiers = 
   [
-    GreaterOrEqual (Name "result", Name "x");
-    GreaterOrEqual (Name "result", Name "y");
-    GreaterOrEqual (Name "result", Integer 50);
-    FactGreaterThan (Name "result", Integer (-3));
+    {
+      left_term = PlaceholderVar "A0";
+      relationship = LessThanEqualTo;
+      right_term = Result;
+    };
+    {
+      left_term = Result;
+      relationship = LessThan;
+      right_term = PlaceholderVar "A0";
+    };
+    {
+      left_term = Constant 0;
+      relationship = LessThanEqualTo;
+      right_term = Result;
+    }
   ]
-
 
 

@@ -1,10 +1,13 @@
+open Typedtree
+open Format
+open Printtyp
+
 type literal =
   | IntLiteral of int
   | BoolLiteral of bool
 
 type base_type =
-  | IntType
-  | BoolType
+  | OcamlType of Types.type_expr
 
 type expr = 
   | Variable of string
@@ -48,8 +51,8 @@ type liquid_type_template =
 
 
 let string_of_base_type = function
-  | IntType -> "int"
-  | BoolType -> "bool"
+  | OcamlType type_expr ->
+      Format.asprintf "%a" Printtyp.type_expr type_expr
 
 let string_of_term = function
   | Name x -> x

@@ -1,6 +1,15 @@
 open Syntax
 open Constraints
-open Constraints
+
+(* The current qualifier family is arithmetic, so it can only be instantiated
+   with variables whose compiler type is OCaml's int. This is a boundary check
+   for this qualifier family, not project-level type inference. *)
+let is_integer_type = function
+  | OcamlType type_expr ->
+      begin match Types.get_desc type_expr with
+      | Tconstr (path, [], _) -> Path.last path = "int"
+      | _ -> false
+      end
 
 type qualifier_term  = 
     | Result
@@ -43,11 +52,12 @@ let qualifiers =
 
 (* The first resolution step: keep only names whose binding has base type int.
    Placeholder filling happens in a later function. *)
-let integer_variables (env : environment) : string list =
+let eligible_variables (env : environment) : string list =
   List.fold_right
     (fun (name, liquid_type) names ->
       match liquid_type with
-      | BaseLiquidType (IntType, _) -> name :: names
+      | BaseLiquidType (base_type, _)
+        when is_integer_type base_type -> name :: names
       | _ -> names)
     env
     []
@@ -98,7 +108,7 @@ let fill_qualifier
 
 (* Instantiate every supplied qualifier using the visible integer variables. *)
 let generated_qualifiers (env : environment) : fact list =
-  let variables = integer_variables env in
+  let variables = eligible_variables env in
   let add_if_new facts assignment qualifier =
     let fact = fill_qualifier assignment qualifier in
     if List.mem fact facts then facts else fact :: facts

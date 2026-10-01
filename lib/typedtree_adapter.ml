@@ -6,14 +6,7 @@ exception Conversion_error of string
 let fail message = raise (Conversion_error message)
 
 let base_type_of_type type_expr =
-  match Types.get_desc type_expr with
-  | Tconstr (path, [], _) ->
-      begin match Path.last path with
-      | "int" -> IntType
-      | "bool" -> BoolType
-      | name -> fail ("Unsupported parameter type: " ^ name)
-      end
-  | _ -> fail "Unsupported parameter type"
+  OcamlType type_expr
 
 let rec convert_expression expression =
   match expression.exp_desc with

@@ -76,10 +76,12 @@ let rec infer_expression context expression =
         infer_expression else_context else_branch
       in
       let whole_type =
-        BaseLiquidType (
-          IntType,
-          UnknownRefinement (Kappa "kappa0")
-        )
+        match then_type with
+        | BaseLiquidType (then_base_type, _) -> BaseLiquidType (
+            then_base_type, 
+            UnknownRefinement (Kappa "kappa0")
+          )
+        | _ -> failwith "If branches must have base types" 
       in
       (
         whole_type,

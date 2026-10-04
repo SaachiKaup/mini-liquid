@@ -2,9 +2,11 @@ open Typedtree
 open Format
 open Printtyp
 
-type literal =
-  | IntLiteral of int
-  | BoolLiteral of bool
+(* Keep literals in the form supplied by the OCaml compiler, rather than
+   reconstructing project-specific integer or Boolean representations. *)
+type literal = {
+  compiler_constant : Asttypes.constant;
+}
 
 type base_type =
   | OcamlType of Types.type_expr
@@ -54,6 +56,17 @@ let string_of_base_type = function
   | OcamlType type_expr ->
       Format.asprintf "%a" Printtyp.type_expr type_expr
 
+let string_of_compiler_constant = function
+  | Asttypes.Const_int number -> string_of_int number
+  | Asttypes.Const_char character -> Printf.sprintf "%C" character
+  | Asttypes.Const_string (value, _, None) -> Printf.sprintf "%S" value
+  | Asttypes.Const_string (value, _, Some delimiter) ->
+      Printf.sprintf "{%s|%s|%s}" delimiter value delimiter
+  | Asttypes.Const_float value -> value
+  | Asttypes.Const_int32 value -> Int32.to_string value ^ "l"
+  | Asttypes.Const_int64 value -> Int64.to_string value ^ "L"
+  | Asttypes.Const_nativeint value -> Nativeint.to_string value ^ "n"
+
 let string_of_term = function
   | Name x -> x
   | Integer number -> string_of_int number
@@ -77,8 +90,7 @@ let rec string_of_fact = function
 
 let rec string_of_expr = function
   | Variable name -> name
-  | Constant (IntLiteral number) -> string_of_int number
-  | Constant (BoolLiteral value) -> string_of_bool value
+  | Constant literal -> string_of_compiler_constant literal.compiler_constant
   | GreaterThan (left, right) ->
       Printf.sprintf "(%s > %s)"
         (string_of_expr left)

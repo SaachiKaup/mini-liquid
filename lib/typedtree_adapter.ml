@@ -28,32 +28,40 @@ let rec convert_expression expression =
       convert_application function_expression arguments
   | Texp_function (parameters, body) ->
       convert_function parameters body
+  | Texp_let (recursive_flag, bindings, body) ->
+      begin match bindings with
+      | [binding] ->
+          Let (
+            convert_binding recursive_flag binding,
+            convert_expression body
+          )
+      | _ ->
+          fail "Only a single local let binding is supported"
+      end
   | _ ->
       fail "Unsupported Typedtree expression"
 
 and convert_application function_expression arguments =
-  let is_greater_than =
-    match function_expression.exp_desc with
-    | Texp_ident (path, _, _) ->
-        Path.last path = ">"
-    | _ -> false
+  let supplied_arguments =
+    List.filter_map
+      (fun (_, argument) ->
+        match argument with
+        | Arg expression -> Some (convert_expression expression)
+        | Omitted () -> None)
+      arguments
   in
-  if not is_greater_than then
-    fail "Unsupported function application"
-  else
-    let supplied_arguments =
-      List.filter_map
-        (fun (_, argument) ->
-          match argument with
-          | Arg expression -> Some expression
-          | Omitted () -> None)
-        arguments
-    in
-    match supplied_arguments with
-    | [left; right] ->
-        GreaterThan (convert_expression left, convert_expression right)
-    | _ ->
-        fail "The greater-than operator must have two arguments"
+  Apply (convert_expression function_expression, supplied_arguments)
+
+and convert_binding recursive_flag binding =
+  match binding.vb_pat.pat_desc with
+  | Tpat_var (identifier, _, _) ->
+      {
+        name = Ident.name identifier;
+        recursive_status = recursive_flag = Asttypes.Recursive;
+        definition_expression = convert_expression binding.vb_expr;
+      }
+  | _ ->
+      fail "Only variable bindings are supported"
 
 and convert_function parameters body =
   let body_expression =
@@ -83,23 +91,27 @@ and convert_function parameters body =
   in
   convert_parameters parameters body_expression
 
-let max_expression structure =
-  let max_binding =
+let binding_named binding_name structure =
+  let selected_binding =
     List.find_map
       (fun item ->
         match item.str_desc with
-        | Tstr_value (_, bindings) ->
+        | Tstr_value (recursive_flag, bindings) ->
             List.find_map
               (fun binding ->
                 match binding.vb_pat.pat_desc with
                 | Tpat_var (identifier, _, _)
-                  when Ident.name identifier = "max" ->
-                    Some binding.vb_expr
+                  when Ident.name identifier = binding_name ->
+                    Some (convert_binding recursive_flag binding)
                 | _ -> None)
               bindings
         | _ -> None)
       structure.str_items
   in
-  match max_binding with
-  | Some expression -> convert_expression expression
-  | None -> fail "Could not find a top-level binding named max"
+  match selected_binding with
+  | Some binding -> binding
+  | None ->
+      fail (Printf.sprintf "Could not find a top-level binding named %s" binding_name)
+
+let max_expression structure =
+  (binding_named "max" structure).definition_expression

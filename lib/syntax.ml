@@ -116,6 +116,13 @@ let rec string_of_expr = function
         (string_of_base_type parameter_type)
         (string_of_expr body)
 
+let string_of_binding binding =
+  let keyword = if binding.recursive_status then "let rec" else "let" in
+  Printf.sprintf "%s %s = %s"
+    keyword
+    binding.name
+    (string_of_expr binding.definition_expression)
+
 let string_of_kappa = function
   | Kappa name -> name
 

@@ -17,16 +17,26 @@ let print_type (expression : expression) =
   print_type_expr expression.exp_type;
   print_newline ()
 
-let find_max (structure : structure) =
+let string_of_rec_flag = function
+  | Asttypes.Recursive -> "recursive"
+  | Asttypes.Nonrecursive -> "nonrecursive"
+
+let find_binding requested_name (structure : structure) =
   List.find_map
     (fun item ->
       match item.str_desc with
-      | Tstr_value (_, bindings) ->
+      | Tstr_value (rec_flag, bindings) ->
           List.find_map
             (fun binding ->
               match binding.vb_pat.pat_desc with
-              | Tpat_var (id, _, _) when Ident.name id = "max" ->
-                  Some binding.vb_expr
+              | Tpat_var (id, _, _) ->
+                  let name = Ident.name id in
+                  begin match requested_name with
+                  | None -> Some (name, rec_flag, binding.vb_expr)
+                  | Some binding_name when name = binding_name ->
+                      Some (name, rec_flag, binding.vb_expr)
+                  | Some _ -> None
+                  end
               | _ -> None)
             bindings
       | _ -> None)
@@ -60,6 +70,20 @@ let rec inspect expression =
       inspect then_branch;
       print_endline "  else:";
       inspect else_branch
+  | Texp_let (rec_flag, bindings, body) ->
+      Printf.printf "Texp_let %s" (string_of_rec_flag rec_flag);
+      print_type expression;
+      List.iter
+        (fun binding ->
+          match binding.vb_pat.pat_desc with
+          | Tpat_var (id, _, _) ->
+              Printf.printf "  binding %s:\n" (Ident.name id)
+          | _ ->
+              print_endline "  non-variable binding:")
+        bindings;
+      List.iter (fun binding -> inspect binding.vb_expr) bindings;
+      print_endline "  body:";
+      inspect body
   | Texp_apply (function_expression, arguments) ->
       Printf.printf "Texp_apply";
       print_type expression;
@@ -81,16 +105,30 @@ let rec inspect expression =
       print_type expression
 
 let () =
-  let cmt_path =
-    if Array.length Sys.argv = 2 then Sys.argv.(1)
-    else "max_program.cmt"
+  let cmt_path, requested_name =
+    match Array.length Sys.argv with
+    | 1 -> ("max_program.cmt", None)
+    | 2 -> (Sys.argv.(1), None)
+    | 3 -> (Sys.argv.(1), Some Sys.argv.(2))
+    | _ ->
+        failwith "Usage: inspect [path-to-cmt] [top-level-binding-name]"
   in
   let cmt = Cmt_format.read_cmt cmt_path in
   compiler_environment := Some cmt.cmt_initial_env;
   match cmt.cmt_annots with
   | Implementation structure ->
-      begin match find_max structure with
-      | Some expression -> inspect expression
-      | None -> failwith "Could not find a top-level binding named max"
+      begin match find_binding requested_name structure with
+      | Some (binding_name, rec_flag, expression) ->
+          Printf.printf "Top-level binding %s is %s\n"
+            binding_name (string_of_rec_flag rec_flag);
+          inspect expression
+      | None ->
+          begin match requested_name with
+          | Some binding_name ->
+              failwith
+                (Printf.sprintf "Could not find a top-level binding named %s"
+                   binding_name)
+          | None -> failwith "Could not find a named top-level binding"
+          end
       end
   | _ -> failwith "Expected implementation annotations in the .cmt file"

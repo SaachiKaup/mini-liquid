@@ -115,8 +115,19 @@ let rec string_of_expr = function
         name
         (string_of_base_type parameter_type)
         (string_of_expr body)
+  | Apply (function_expression, arguments) ->
+      let printed_arguments =
+        String.concat ", " (List.map string_of_expr arguments)
+      in
+      Printf.sprintf "%s (%s)"
+        (string_of_expr function_expression)
+        printed_arguments
+  | Let (binding, body) ->
+      Printf.sprintf "%s in %s"
+        (string_of_binding binding)
+        (string_of_expr body)
 
-let string_of_binding binding =
+and string_of_binding binding =
   let keyword = if binding.recursive_status then "let rec" else "let" in
   Printf.sprintf "%s %s = %s"
     keyword

@@ -12,8 +12,10 @@ let rec convert_expression expression =
   match expression.exp_desc with
   | Texp_ident (path, _, _) ->
       Variable (Path.last path)
-  | Texp_constant (Const_int number) ->
-      Constant (IntLiteral number)
+  | Texp_constant compiler_constant ->
+      Constant {
+        compiler_constant;
+      }
   | Texp_ifthenelse (condition, then_branch, Some else_branch) ->
       If (
         convert_expression condition,

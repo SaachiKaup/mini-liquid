@@ -1,6 +1,8 @@
 open Typedtree
 open Format
 open Printtyp
+open Types
+
 
 (* Keep literals in the form supplied by the OCaml compiler, rather than
    reconstructing project-specific integer or Boolean representations. *)
@@ -17,6 +19,14 @@ type expr =
   | GreaterThan of expr * expr
   | If of expr * expr * expr
   | Function of string * base_type * expr
+
+(* Top level binding type
+*)
+type binding = {
+    name : string;
+    recursive_status : bool;
+    definition_expression : expr
+}
 
 type term =
   | Name of string

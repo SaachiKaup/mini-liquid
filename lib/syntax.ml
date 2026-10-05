@@ -19,6 +19,8 @@ type expr =
   | GreaterThan of expr * expr
   | If of expr * expr * expr
   | Function of string * base_type * expr
+  | Apply of expr * expr list
+  | Let of binding * expr
 
 and binding = {
     name : string;

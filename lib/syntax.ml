@@ -20,9 +20,7 @@ type expr =
   | If of expr * expr * expr
   | Function of string * base_type * expr
 
-(* Top level binding type
-*)
-type binding = {
+and binding = {
     name : string;
     recursive_status : bool;
     definition_expression : expr

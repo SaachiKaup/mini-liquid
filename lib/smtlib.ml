@@ -1,8 +1,12 @@
 open Syntax
 
-let smt_of_term = function
+let rec smt_of_term = function
   | Name name -> name
   | Integer number -> string_of_int number
+  | Add (left, right) ->
+      Printf.sprintf "(+ %s %s)" (smt_of_term left) (smt_of_term right)
+  | Sub (left, right) ->
+      Printf.sprintf "(- %s %s)" (smt_of_term left) (smt_of_term right)
 
 let rec smt_of_fact = function
   | Equal (left, right) ->
@@ -20,7 +24,6 @@ let rec smt_of_fact = function
   | Not fact ->
       Printf.sprintf "(not %s)"
         (smt_of_fact fact)
-
 
 let assertion fact =
   "(assert " ^ smt_of_fact fact ^ ")"

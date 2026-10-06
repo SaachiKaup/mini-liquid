@@ -36,6 +36,8 @@ let instantiate_fix replacement_type fix_scheme =
 
 let string_of_poly_var = function
   | PolyVar name -> name
+  | ConcreteType (FunctionLiquidType _ as liquid_type) ->
+      Printf.sprintf "(%s)" (string_of_liquid_type_template liquid_type)
   | ConcreteType liquid_type -> string_of_liquid_type_template liquid_type
 
 let string_of_inner_function = function

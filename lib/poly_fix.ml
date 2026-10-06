@@ -12,6 +12,7 @@ type function_type = {
     outer: poly_var
 }
 
+(* can be ThereExists also, but fine , ignoring for now *)
 type fix_scheme_type =
     | ForAll of poly_var * function_type
 

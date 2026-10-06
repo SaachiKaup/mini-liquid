@@ -31,6 +31,8 @@ and binding = {
 type term =
   | Name of string
   | Integer of int
+  | Add of term * term
+  | Sub of term * term
 
 type fact =
   | Equal of term * term
@@ -41,9 +43,19 @@ type fact =
 type kappa =
   | Kappa of string
 
+type substitution = {
+  actual_param: term;
+  formal_param: string
+}
+
+type unknown_refinement = {
+  kappa_name: kappa;
+  pending_substitutions: substitution list
+}
+  
 type refinement_template =
   | KnownFacts of fact list
-  | UnknownRefinement of kappa
+  | UnknownRefinement of unknown_refinement 
 
 
 (*
@@ -77,9 +89,13 @@ let string_of_compiler_constant = function
   | Asttypes.Const_int64 value -> Int64.to_string value ^ "L"
   | Asttypes.Const_nativeint value -> Nativeint.to_string value ^ "n"
 
-let string_of_term = function
+let rec string_of_term = function
   | Name x -> x
   | Integer number -> string_of_int number
+  | Add (left, right) ->
+      Printf.sprintf "%s + %s" (string_of_term left) (string_of_term right)
+  | Sub (left, right) ->
+      Printf.sprintf "%s - %s" (string_of_term left) (string_of_term right)
 
 let rec string_of_fact = function
   | Equal (a_term, b_term) ->

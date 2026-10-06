@@ -153,12 +153,18 @@ and string_of_binding binding =
 let string_of_kappa = function
   | Kappa name -> name
 
+let string_of_substitution substitution =
+  Printf.sprintf "[%s / %s]"
+    (string_of_term substitution.actual_param)
+    substitution.formal_param
+
 let string_of_refinement_template = function
   | KnownFacts [] -> "true"
   | KnownFacts facts ->
       String.concat " AND " (List.map string_of_fact facts)
-  | UnknownRefinement kappa ->
-      string_of_kappa kappa
+  | UnknownRefinement { kappa_name; pending_substitutions } ->
+      String.concat "" (List.map string_of_substitution pending_substitutions)
+      ^ string_of_kappa kappa_name
 
 let rec string_of_liquid_type_template = function
   | BaseLiquidType (base_type, refinement) ->

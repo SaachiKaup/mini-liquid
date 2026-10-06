@@ -26,3 +26,11 @@ let fix_scheme =
         outer = alpha
       }
     )
+
+let instantiate_fix replacement_type fix_scheme =
+   match fix_scheme with
+   | ForAll (_, _) -> {
+       inner = Function (ConcreteType replacement_type, ConcreteType replacement_type);
+       outer = ConcreteType replacement_type
+     }
+    

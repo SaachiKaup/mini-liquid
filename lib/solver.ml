@@ -48,7 +48,7 @@ let counterexample_in_any_branch obligations candidate =
   search_for_counterexample candidate obligations
 
 let rec fill_kappa kappa_name facts = function
-  | BaseLiquidType (base_type, UnknownRefinement (Kappa name))
+  | BaseLiquidType (base_type, UnknownRefinement {kappa_name = (Kappa name); pending_substitutions = []})
     when name = kappa_name ->
       BaseLiquidType (base_type, KnownFacts facts)
   | BaseLiquidType _ as liquid_type ->

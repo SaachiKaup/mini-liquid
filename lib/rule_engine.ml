@@ -79,7 +79,7 @@ let rec infer_expression context expression =
         match then_type with
         | BaseLiquidType (then_base_type, _) -> BaseLiquidType (
             then_base_type, 
-            UnknownRefinement (Kappa "kappa0")
+            UnknownRefinement {kappa_name = (Kappa "kappa0"); pending_substitutions = []}
           )
         | _ -> failwith "If branches must have base types" 
       in

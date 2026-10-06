@@ -94,3 +94,32 @@ let rec infer_expression context expression =
       ) 
   | _ ->
       failwith ("Unknown act")
+
+
+let unfinished_template binding = 
+  match binding with
+  | { name = function_name; recursive_status = true;
+      definition_expression = Function (parameter_name, parameter_base_type, _) } ->
+      let input_type =
+        BaseLiquidType (
+          parameter_base_type,
+          UnknownRefinement {
+            kappa_name = Kappa (function_name ^ "_input");
+            pending_substitutions = [];
+          }
+        )
+      in
+      let output_type =
+        BaseLiquidType (
+          parameter_base_type,
+          UnknownRefinement {
+            kappa_name = Kappa (function_name ^ "_output");
+            pending_substitutions = [];
+          }
+        )
+      in
+      FunctionLiquidType (parameter_name, input_type, output_type)
+  | { recursive_status = false; _ } ->
+      failwith "A recursive template requires a let rec binding"
+  | { recursive_status = true; _ } ->
+      failwith "A recursive template requires a function definition"

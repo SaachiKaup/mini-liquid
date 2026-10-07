@@ -47,11 +47,28 @@ let add_variable context name liquid_type =
     variables = (name, liquid_type) :: context.variables;
   }
 
+(* [LT-INT]: an integer literal has the precise refinement saying that its
+   result is that integer. *)
+let infer_constant literal =
+  match literal.compiler_constant with
+  | Asttypes.Const_int number ->
+      (
+        BaseLiquidType (
+          OcamlType Predef.type_int,
+          KnownFacts [Equal (Name "result", Integer number)]
+        ),
+        []
+      )
+  | _ ->
+      failwith "Only integer constants are supported for now"
+
 (* dispatcher which goes through program and picks which rule to apply *)
 let rec infer_expression context expression =
   match expression with
   | Variable name ->
       infer_variable context name
+  | Constant literal ->
+      infer_constant literal
   | Function (name, base_type, body) ->
       let input_param_type = 
         BaseLiquidType (base_type, KnownFacts [])
@@ -123,3 +140,15 @@ let unfinished_template binding =
       failwith "A recursive template requires a let rec binding"
   | { recursive_status = true; _ } ->
       failwith "A recursive template requires a function definition"
+
+(* Give a recursive definition its tentative liquid type while its body is
+   checked.  This makes recursive uses of the function name resolvable. *)
+let add_recursive_binding context binding =
+  let recursive_template = unfinished_template binding in
+  add_variable context binding.name recursive_template
+
+let infer_recursive_binding context binding =
+  let context_with_recursive_function =
+    add_recursive_binding context binding
+  in
+  infer_expression context_with_recursive_function binding.definition_expression

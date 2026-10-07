@@ -29,8 +29,16 @@ let infer_variable context name =
 let fact_of_condition = function
   | GreaterThan (Variable left, Variable right) ->
       FactGreaterThan (Name left, Name right)
+  | Apply (
+      Variable "<",
+      [Variable variable_name;
+       Constant { compiler_constant = Asttypes.Const_int number }]
+    ) ->
+      (* [k < n] is represented using the existing greater-than fact as
+         [n > k]. *)
+      FactGreaterThan (Integer number, Name variable_name)
   | _ ->
-      failwith "Only variable greater-than conditions are supported for now"
+      failwith "Only variable greater-than and variable-less-than-integer conditions are supported for now"
 
 let add_guard context guard =
   { context with guards = guard :: context.guards }
@@ -62,6 +70,21 @@ let infer_constant literal =
   | _ ->
       failwith "Only integer constants are supported for now"
 
+(* Translate the simple integer expressions supported by this project into
+   refinement-language terms.  These terms can later be used in facts and in
+   substitutions such as [k - 1 / k]. *)
+let rec term_of_expression = function
+  | Variable name ->
+      Name name
+  | Constant { compiler_constant = Asttypes.Const_int number } ->
+      Integer number
+  | Apply (Variable "+", [left; right]) ->
+      Add (term_of_expression left, term_of_expression right)
+  | Apply (Variable "-", [left; right]) ->
+      Sub (term_of_expression left, term_of_expression right)
+  | _ ->
+      failwith "Only integer variables, constants, addition, and subtraction can become refinement terms"
+
 (* dispatcher which goes through program and picks which rule to apply *)
 let rec infer_expression context expression =
   match expression with
@@ -69,6 +92,16 @@ let rec infer_expression context expression =
       infer_variable context name
   | Constant literal ->
       infer_constant literal
+  | Apply (Variable "+", [left; right]) ->
+      infer_arithmetic context
+        (Add (term_of_expression left, term_of_expression right))
+        left
+        right
+  | Apply (Variable "-", [left; right]) ->
+      infer_arithmetic context
+        (Sub (term_of_expression left, term_of_expression right))
+        left
+        right
   | Function (name, base_type, body) ->
       let input_param_type = 
         BaseLiquidType (base_type, KnownFacts [])
@@ -79,6 +112,16 @@ let rec infer_expression context expression =
           body
       in
       (FunctionLiquidType (name, input_param_type, body_type), obligations)
+  | Let ({ name; recursive_status = false; definition_expression }, body) ->
+      let definition_type, definition_obligations =
+        infer_expression context definition_expression
+      in
+      let body_type, body_obligations =
+        infer_expression (add_variable context name definition_type) body
+      in
+      (body_type, definition_obligations @ body_obligations)
+  | Let ({ recursive_status = true; _ }, _) ->
+      failwith "Recursive local lets must be inferred through the recursive-binding rule"
   | If (condition, then_branch, else_branch) ->
       let guard = fact_of_condition condition
       in
@@ -111,6 +154,25 @@ let rec infer_expression context expression =
       ) 
   | _ ->
       failwith ("Unknown act")
+
+and infer_arithmetic context result_term left right =
+  let left_type, left_obligations =
+    infer_expression context left
+  in
+  let right_type, right_obligations =
+    infer_expression context right
+  in
+  match left_type, right_type with
+  | BaseLiquidType (base_type, _), BaseLiquidType _ ->
+      (
+        BaseLiquidType (
+          base_type,
+          KnownFacts [Equal (Name "result", result_term)]
+        ),
+        left_obligations @ right_obligations
+      )
+  | _ ->
+      failwith "Arithmetic currently requires base-type operands"
 
 
 let unfinished_template binding = 

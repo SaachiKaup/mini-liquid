@@ -85,6 +85,32 @@ let rec term_of_expression = function
   | _ ->
       failwith "Only integer variables, constants, addition, and subtraction can become refinement terms"
 
+let output_with_pending_substitution
+    output_type
+    formal_parameter
+    actual_argument_term =
+  match output_type with
+  | BaseLiquidType (
+      base_type,
+      UnknownRefinement unknown_refinement
+    ) ->
+      BaseLiquidType (
+        base_type,
+        UnknownRefinement {
+          unknown_refinement with
+          pending_substitutions =
+            unknown_refinement.pending_substitutions @ [
+              {
+                actual_param = actual_argument_term;
+                formal_param = formal_parameter;
+              }
+            ];
+        }
+      )
+  | _ ->
+      failwith
+        "Recursive function output must currently be a base type with an unknown refinement"
+
 (* dispatcher which goes through program and picks which rule to apply *)
 let rec infer_expression context expression =
   match expression with
@@ -102,6 +128,8 @@ let rec infer_expression context expression =
         (Sub (term_of_expression left, term_of_expression right))
         left
         right
+  | Apply (Variable function_name, [argument]) ->
+      infer_application context function_name argument
   | Function (name, base_type, body) ->
       let input_param_type = 
         BaseLiquidType (base_type, KnownFacts [])
@@ -181,7 +209,37 @@ and infer_arithmetic context result_term left right =
       )
   | _ ->
       failwith "Arithmetic currently requires base-type operands"
-
+(* produces new obligations after substitutio *)
+and infer_application context function_name argument =
+  let argument_type, argument_obligations =
+    infer_expression context argument
+  in
+  match List.assoc_opt function_name context.variables with
+  | Some (FunctionLiquidType (
+      formal_parameter,
+      input_type,
+      output_type
+    )) ->
+      let actual_argument_term =
+        term_of_expression argument
+      in
+      let result_type =
+        output_with_pending_substitution
+          output_type
+          formal_parameter
+          actual_argument_term
+      in
+      let input_obligation =
+        make_obligation context argument_type input_type
+      in
+      (
+        result_type,
+        argument_obligations @ [input_obligation]
+      )
+  | Some _ ->
+      failwith (function_name ^ " is not a unary function")
+  | None ->
+      failwith ("Unknown function: " ^ function_name)
 
 let unfinished_template binding = 
   match binding with

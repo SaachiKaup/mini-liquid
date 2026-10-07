@@ -73,6 +73,52 @@ type liquid_type_template =
     | BaseLiquidType of base_type * refinement_template
     | FunctionLiquidType of string * liquid_type_template * liquid_type_template
 
+(* Apply a refinement-level substitution.  This is deliberately separate from
+   source-expression substitution: [term] is already the small logical
+   language understood by the solver. *)
+let rec substitute_term formal_param actual_param = function
+  | Name name when name = formal_param -> actual_param
+  | Name _ as term -> term
+  | Integer _ as term -> term
+  | Add (left, right) ->
+      Add (
+        substitute_term formal_param actual_param left,
+        substitute_term formal_param actual_param right
+      )
+  | Sub (left, right) ->
+      Sub (
+        substitute_term formal_param actual_param left,
+        substitute_term formal_param actual_param right
+      )
+
+let rec substitute_fact formal_param actual_param = function
+  | Equal (left, right) ->
+      Equal (
+        substitute_term formal_param actual_param left,
+        substitute_term formal_param actual_param right
+      )
+  | FactGreaterThan (left, right) ->
+      FactGreaterThan (
+        substitute_term formal_param actual_param left,
+        substitute_term formal_param actual_param right
+      )
+  | GreaterOrEqual (left, right) ->
+      GreaterOrEqual (
+        substitute_term formal_param actual_param left,
+        substitute_term formal_param actual_param right
+      )
+  | Not fact ->
+      Not (substitute_fact formal_param actual_param fact)
+
+let apply_pending_substitutions substitutions facts =
+  List.fold_left
+    (fun facts substitution ->
+      List.map
+        (substitute_fact substitution.formal_param substitution.actual_param)
+        facts)
+    facts
+    substitutions
+
 
 let string_of_base_type = function
   | OcamlType type_expr ->

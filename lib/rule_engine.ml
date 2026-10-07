@@ -29,6 +29,8 @@ let infer_variable context name =
 let fact_of_condition = function
   | GreaterThan (Variable left, Variable right) ->
       FactGreaterThan (Name left, Name right)
+  | Apply (Variable ">", [Variable left; Variable right]) ->
+      FactGreaterThan (Name left, Name right)
   | Apply (
       Variable "<",
       [Variable variable_name;
@@ -38,7 +40,7 @@ let fact_of_condition = function
          [n > k]. *)
       FactGreaterThan (Integer number, Name variable_name)
   | _ ->
-      failwith "Only variable greater-than and variable-less-than-integer conditions are supported for now"
+      failwith "Only variable comparisons against variables or integer literals are supported for now"
 
 let add_guard context guard =
   { context with guards = guard :: context.guards }

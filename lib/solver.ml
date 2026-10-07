@@ -48,9 +48,15 @@ let counterexample_in_any_branch obligations candidate =
   search_for_counterexample candidate obligations
 
 let rec fill_kappa kappa_name facts = function
-  | BaseLiquidType (base_type, UnknownRefinement {kappa_name = (Kappa name); pending_substitutions = []})
+  | BaseLiquidType (
+      base_type,
+      UnknownRefinement { kappa_name = Kappa name; pending_substitutions }
+    )
     when name = kappa_name ->
-      BaseLiquidType (base_type, KnownFacts facts)
+      BaseLiquidType (
+        base_type,
+        KnownFacts (apply_pending_substitutions pending_substitutions facts)
+      )
   | BaseLiquidType _ as liquid_type ->
       liquid_type
   | FunctionLiquidType (name, input_type, output_type) ->
@@ -59,3 +65,29 @@ let rec fill_kappa kappa_name facts = function
         fill_kappa kappa_name facts input_type,
         fill_kappa kappa_name facts output_type
       )
+
+let fill_kappas assignments liquid_type =
+  List.fold_left
+    (fun liquid_type (kappa_name, facts) ->
+      fill_kappa kappa_name facts liquid_type)
+    liquid_type
+    assignments
+
+let fill_obligation_kappas assignments obligation =
+  let fill = fill_kappas assignments in
+  {
+    context = {
+      obligation.context with
+      variables =
+        List.map
+          (fun (name, liquid_type) -> (name, fill liquid_type))
+          obligation.context.variables;
+    };
+    actual_type = fill obligation.actual_type;
+    expected_type = fill obligation.expected_type;
+  }
+
+let obligation_holds obligation =
+  let assumptions = facts_of_obligation obligation in
+  let expected_facts = expected_facts_of_obligation obligation in
+  Z3_runner.run (subtyping_query assumptions expected_facts) = "unsat"

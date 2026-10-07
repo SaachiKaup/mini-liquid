@@ -21,12 +21,31 @@ type subtyping_obligation = {
   expected_type : liquid_type_template;
 }
 
-let facts_of_obligation obligation =
-  match obligation.actual_type with
+let facts_of_base_type = function
   | BaseLiquidType (_, KnownFacts actual_facts) ->
-      obligation.context.guards @ actual_facts
+      actual_facts
   | _ ->
       failwith "Expected a base type with known facts"
+
+let facts_of_binding (name, liquid_type) =
+  match liquid_type with
+  | BaseLiquidType (_, KnownFacts facts) ->
+      List.map (substitute_fact "result" (Name name)) facts
+  | BaseLiquidType (_, UnknownRefinement _) ->
+      failwith "Cannot send an unfilled refinement kappa to the solver"
+  | FunctionLiquidType _ ->
+      []
+
+let facts_of_context context =
+  context.guards
+  @ List.concat_map facts_of_binding context.variables
+
+let facts_of_obligation obligation =
+  facts_of_context obligation.context
+  @ facts_of_base_type obligation.actual_type
+
+let expected_facts_of_obligation obligation =
+  facts_of_base_type obligation.expected_type
 
 let string_of_binding (name, type_template) =
   Printf.sprintf "%s : %s"

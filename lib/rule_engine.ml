@@ -112,16 +112,8 @@ let rec infer_expression context expression =
           body
       in
       (FunctionLiquidType (name, input_param_type, body_type), obligations)
-  | Let ({ name; recursive_status = false; definition_expression }, body) ->
-      let definition_type, definition_obligations =
-        infer_expression context definition_expression
-      in
-      let body_type, body_obligations =
-        infer_expression (add_variable context name definition_type) body
-      in
-      (body_type, definition_obligations @ body_obligations)
-  | Let ({ recursive_status = true; _ }, _) ->
-      failwith "Recursive local lets must be inferred through the recursive-binding rule"
+  | Let (binding, body) ->
+      infer_local_let context binding body
   | If (condition, then_branch, else_branch) ->
       let guard = fact_of_condition condition
       in
@@ -154,6 +146,22 @@ let rec infer_expression context expression =
       ) 
   | _ ->
       failwith ("Unknown act")
+
+and infer_local_let context binding body =
+  match binding with
+  | { name; recursive_status = false; definition_expression } ->
+      let definition_type, definition_obligations =
+        infer_expression context definition_expression
+      in
+      let context_with_local =
+        add_variable context name definition_type
+      in
+      let body_type, body_obligations =
+        infer_expression context_with_local body
+      in
+      (body_type, definition_obligations @ body_obligations)
+  | { recursive_status = true; _ } ->
+      failwith "Recursive local lets must be inferred through the recursive-binding rule"
 
 and infer_arithmetic context result_term left right =
   let left_type, left_obligations =

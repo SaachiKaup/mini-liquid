@@ -275,8 +275,71 @@ let add_recursive_binding context binding =
   let recursive_template = unfinished_template binding in
   add_variable context binding.name recursive_template
 
+(* Check an expression against an already-promised result type.  Recursive
+   functions use this so their branches target [sum_output] directly rather
+   than the fresh kappa introduced by the generic [If] rule. *)
+let rec infer_expression_against context expression expected_type =
+  match expression with
+  | If (condition, then_branch, else_branch) ->
+      let guard =
+        fact_of_condition condition
+      in
+      let then_context =
+        add_guard context guard
+      in
+      let else_context =
+        add_guard context (Not guard)
+      in
+      let _, then_obligations =
+        infer_expression_against then_context then_branch expected_type
+      in
+      let _, else_obligations =
+        infer_expression_against else_context else_branch expected_type
+      in
+      (expected_type, then_obligations @ else_obligations)
+  | Let ({ name; recursive_status = false; definition_expression }, body) ->
+      let definition_type, definition_obligations =
+        infer_expression context definition_expression
+      in
+      let context_with_local =
+        add_variable context name definition_type
+      in
+      let _, body_obligations =
+        infer_expression_against context_with_local body expected_type
+      in
+      (expected_type, definition_obligations @ body_obligations)
+  | Let ({ recursive_status = true; _ }, _) ->
+      failwith "Recursive local lets must be inferred through the recursive-binding rule"
+  | _ ->
+      let actual_type, existing_obligations =
+        infer_expression context expression
+      in
+      let expected_obligation =
+        make_obligation context actual_type expected_type
+      in
+      (expected_type, existing_obligations @ [expected_obligation])
+
 let infer_recursive_binding context binding =
-  let context_with_recursive_function =
-    add_recursive_binding context binding
+  let recursive_template =
+    unfinished_template binding
   in
-  infer_expression context_with_recursive_function binding.definition_expression
+  let context_with_recursive_function =
+    add_variable context binding.name recursive_template
+  in
+  match binding.definition_expression, recursive_template with
+  | Function (parameter_name, _, body),
+    FunctionLiquidType (_, input_type, output_type) ->
+      let body_context =
+        add_variable
+          context_with_recursive_function
+          parameter_name
+          input_type
+      in
+      let _, obligations =
+        infer_expression_against body_context body output_type
+      in
+      (recursive_template, obligations)
+  | Function _, _ ->
+      failwith "A recursive template must be a function type"
+  | _ ->
+      failwith "A recursive binding must have a function definition"

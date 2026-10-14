@@ -271,6 +271,29 @@ let unfinished_template binding =
   | { recursive_status = true; _ } ->
       failwith "A recursive template requires a function definition"
 
+(* The qualifier candidates for a recursive function are determined at the
+   locations where its two kappas occur.  The input refinement can see the
+   outer environment; the result refinement can additionally mention the
+   formal parameter. *)
+let recursive_kappa_scopes context binding =
+  match binding with
+  | {
+      name = function_name;
+      recursive_status = true;
+      definition_expression = Function (parameter_name, parameter_base_type, _);
+    } ->
+      let parameter_type =
+        BaseLiquidType (parameter_base_type, KnownFacts [])
+      in
+      [
+        (function_name ^ "_input", context.variables);
+        (function_name ^ "_output", (parameter_name, parameter_type) :: context.variables);
+      ]
+  | { recursive_status = false; _ } ->
+      failwith "Recursive kappa scopes require a let rec binding"
+  | { recursive_status = true; _ } ->
+      failwith "Recursive kappa scopes require a function definition"
+
 (* Give a recursive definition its tentative liquid type while its body is
    checked.  This makes recursive uses of the function name resolvable. *)
 let add_recursive_binding context binding =

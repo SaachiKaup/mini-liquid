@@ -27,6 +27,11 @@ let print_assignment (kappa_name, facts) =
     kappa_name
     (string_of_refinement_template (KnownFacts facts))
 
+let print_weakening { Mini_liquid.Solver.kappa_name; removed } =
+  Printf.printf "  %s: remove %s\n"
+    kappa_name
+    (string_of_refinement_template (KnownFacts removed))
+
 let read_binding source_path binding_name =
   print_stage "1" "OCaml frontend";
   Printf.printf "Reading %s\n" source_path;
@@ -44,41 +49,41 @@ let read_binding source_path binding_name =
     (string_of_expr binding.definition_expression);
   binding
 
-let run_sum () =
-  let sum_binding =
-    read_binding "lib/programs/sum_problem.ml" "sum"
+let run_recursive_example example_name source_path binding_name =
+  let recursive_binding =
+    read_binding source_path binding_name
   in
   print_stage "3" "Recursive Liquid-Type constraints";
   let recursive_template, obligations =
-    infer_recursive_binding empty_context sum_binding
+    infer_recursive_binding empty_context recursive_binding
   in
   Printf.printf "Temporary recursive type:\n  %s\n"
     (string_of_liquid_type_template recursive_template);
   print_endline "\nGenerated constraints:";
   print_obligations obligations;
 
-  (* Deliberately explicit candidates for the narrow sum demonstration.
-     Automatic multi-kappa qualifier search is a later extension. *)
-  let candidate_assignments = [
-    ("sum_input", []);
-    ("sum_output", [
-      GreaterOrEqual (Name "result", Integer 0);
-      GreaterOrEqual (Name "result", Name "k");
-    ]);
-  ] in
+  let kappa_scopes =
+    recursive_kappa_scopes empty_context recursive_binding
+  in
+  let initial_assignments, weakenings, assignments =
+    solve_recursive_kappas kappa_scopes obligations
+  in
 
-  print_stage "4" "Instantiate recursive refinements";
-  print_endline "Candidate kappa assignments:";
-  List.iter print_assignment candidate_assignments;
+  print_stage "4" "Initial Q* assignments";
+  List.iter print_assignment initial_assignments;
+
+  print_stage "5" "Iterative weakening";
+  if weakenings = [] then
+    print_endline "  No candidates were removed."
+  else
+    List.iter print_weakening weakenings;
+
+  print_stage "6" "Z3 validation";
   let solved_obligations =
     List.map
-      (fill_obligation_kappas candidate_assignments)
+      (fill_obligation_kappas assignments)
       obligations
   in
-  print_endline "\nConstraints after pending substitutions are expanded:";
-  print_obligations solved_obligations;
-
-  print_stage "5" "Z3 validation";
   let results =
     List.map obligation_holds solved_obligations
   in
@@ -86,22 +91,25 @@ let run_sum () =
     (fun index holds ->
       Printf.printf "  Constraint %d: %s\n"
         (index + 1)
-        (if holds then "proved" else "not proved"))
+      (if holds then "proved" else "not proved"))
     results;
 
-  print_stage "6" "Final recursive Liquid type";
+  print_stage "7" "Final recursive Liquid type";
+  Printf.printf "Example: %s\n" example_name;
+  print_endline "Stable kappa assignments:";
+  List.iter print_assignment assignments;
   let final_type =
-    fill_kappas candidate_assignments recursive_template
+    fill_kappas assignments recursive_template
   in
   Printf.printf "  %s\n" (string_of_liquid_type_template final_type)
 
-let run_max () =
-  let max_binding =
-    read_binding "lib/programs/max_program.ml" "max"
+let run_regular_example example_name source_path binding_name =
+  let binding =
+    read_binding source_path binding_name
   in
   print_stage "3" "Ordinary Liquid-Type constraints";
   let template_type, obligations =
-    infer_expression empty_context max_binding.definition_expression
+    infer_expression empty_context binding.definition_expression
   in
   print_endline "Generated branch constraints:";
   print_obligations obligations;
@@ -127,6 +135,7 @@ let run_max () =
   in
 
   print_stage "6" "Final Liquid type";
+  Printf.printf "Example: %s\n" example_name;
   let final_type =
     fill_kappa "kappa0" surviving template_type
   in
@@ -137,11 +146,17 @@ let selected_mode () =
   | [_] -> "sum"
   | [_; mode] -> mode
   | _ ->
-      failwith "Usage: dune exec ./bin/main.exe -- [sum|max]"
+      failwith "Usage: dune exec ./bin/main.exe -- [max|voting|grade|sum|fibonacci]"
 
 let () =
   match selected_mode () with
-  | "sum" -> run_sum ()
-  | "max" -> run_max ()
+  | "max" -> run_regular_example "max" "examples/max.ml" "max"
+  | "voting" ->
+      run_regular_example "voting eligibility" "examples/voting.ml" "voting"
+  | "grade" ->
+      run_regular_example "pass/fail grade" "examples/grade.ml" "grade"
+  | "sum" -> run_recursive_example "sum" "examples/sum.ml" "sum"
+  | "fibonacci" ->
+      run_recursive_example "fibonacci" "examples/fibonacci.ml" "fibonacci"
   | mode ->
-      failwith ("Unknown example: " ^ mode ^ ". Choose sum or max.")
+      failwith ("Unknown example: " ^ mode ^ ". Choose max, voting, grade, sum, or fibonacci.")

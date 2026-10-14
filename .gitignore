@@ -2,4 +2,5 @@
 *.cmo
 *.o
 *.cmx
+*.cmt
 demo
